@@ -8,7 +8,6 @@ open Fable.PowerPack.Fetch
 open Fable
 open Fable.Recharts
 open Fable.Recharts.Props
-open Thoth.Json
 open Shared
 open Fulma
 open Fable.Import.JS
@@ -21,17 +20,15 @@ type Msg =
     | GenerateInitalized
     | GenerateFailed
     | GetPoint of DataPoint
+    | LoadInitialData
+    | InitDataLoaded of DataPoint []
+    | InitDataLoadingFailed
 
 let init() : Model * Cmd<Msg> =
-    let initialModel =
-        {Data =
-             [|{x = 1.
-                y = 1.}
-               {x = 2.
-                y = 2.}
-               {x = 3.
-                y = 3.}|]}
-    initialModel, Cmd.none
+    let initialModel = {Data = [||]}
+    let prom = fetchAs<DataPoint []> "/api/init" (Thoth.Json.Decode.Auto.generateDecoder()) []
+    let cmd = Cmd.ofPromise (fun _ -> prom) () InitDataLoaded (fun _ -> InitDataLoadingFailed)
+    initialModel, cmd
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
@@ -43,8 +40,11 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let cmd =
             Cmd.ofPromise (fun _ -> fetch "/api/generate" []) () (fun _ -> GenerateInitalized) (fun _ -> GenerateFailed)
         currentModel, cmd
+    | InitDataLoaded(d) -> {currentModel with Data = d}, Cmd.none
     | GenerateInitalized -> currentModel, Cmd.none
     | GenerateFailed -> currentModel, Cmd.none
+    | LoadInitialData -> currentModel, Cmd.none
+    | InitDataLoadingFailed -> currentModel, Cmd.none
 
 let safeComponents =
     let components =

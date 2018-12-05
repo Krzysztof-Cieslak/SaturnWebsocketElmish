@@ -1,7 +1,5 @@
 open System.IO
-open System.Threading.Tasks
 open Microsoft.AspNetCore.Builder
-open Microsoft.Extensions.DependencyInjection
 open FSharp.Control.Tasks.V2
 open Giraffe
 open Saturn
@@ -12,28 +10,43 @@ let port = 8085us
 let mutable x = 4.
 let random = System.Random(1234)
 let mutable timer : System.Timers.Timer option = None
-let webApp = router {get "/api/generate" (fun next ctx -> 
-                         task {
-                             match timer with
-                             | Some t -> ()
-                             | None -> 
-                                 let t = new System.Timers.Timer(1000.)
-                                 t.Elapsed
-                                 |> Event.add (fun n -> 
-                                        let y = random.NextDouble() * 10.
-                                        
-                                        let t =
-                                            {x = x
-                                             y = y}
-                                        
-                                        let z = Thoth.Json.Net.Encode.Auto.toString (2, t)
-                                        (WebSockets.sendMessageToSockets z).Wait()
-                                        x <- x + 1.)
-                                 t.Start()
-                                 timer <- Some t
-                                 ()
-                             return! Successful.OK "Hello world" next ctx
-                         })}
+
+let webApp =
+    router {
+        get "/api/generate" (fun next ctx -> 
+            task {
+                match timer with
+                | Some t -> ()
+                | None -> 
+                    let t = new System.Timers.Timer(1000.)
+                    t.Elapsed
+                    |> Event.add (fun n -> 
+                           let y = random.NextDouble() * 10.
+                           
+                           let t =
+                               {x = x
+                                y = y}
+                           
+                           let z = Thoth.Json.Net.Encode.Auto.toString (2, t)
+                           (WebSockets.sendMessageToSockets z).Wait()
+                           x <- x + 1.)
+                    t.Start()
+                    timer <- Some t
+                    ()
+                return! Successful.OK "Hello world" next ctx
+            })
+        get "/api/init" (fun next ctx -> 
+            task {
+                let data =
+                    [|{x = 1.
+                       y = 2.}
+                      {x = 2.
+                       y = 5.}
+                      {x = 3.
+                       y = 1.}|]
+                return! Successful.OK data next ctx
+            })
+    }
 
 let app =
     application {
