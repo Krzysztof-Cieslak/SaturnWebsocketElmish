@@ -1,0 +1,5 @@
+group Server
+    FSharp.Core
+    Saturn
+    Thoth.Json.Giraffe
+    Microsoft.AspNetCore.WebSockets

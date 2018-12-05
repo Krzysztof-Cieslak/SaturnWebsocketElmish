@@ -1,0 +1,8 @@
+{
+    "fantomas.pageWidth": 120,
+    "editor.formatOnSave": true,
+    "editor.formatOnSaveTimeout": 3000,
+    "fantomas.noSpaceAfterComma": false,
+    "fantomas.noSpaceBeforeArgument": false,
+    "fantomas.noSpaceBeforeColon": false
+}
