@@ -43,14 +43,11 @@ type WebSocketMiddleware(next : RequestDelegate) =
             if ctx.Request.Path = PathString("/ws") then 
                 match ctx.WebSockets.IsWebSocketRequest with
                 | true -> 
-                    printfn "IS websockets"
                     let! webSocket = ctx.WebSockets.AcceptWebSocketAsync() |> Async.AwaitTask
-                    printfn "websocket accepted"
                     sockets <- addSocket sockets webSocket
                     let buffer : byte [] = Array.zeroCreate 4096
                     let! echo = webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None) 
                                 |> Async.AwaitTask
-                    printfn "Websocket recieved"
                     ()
                 | false -> ctx.Response.StatusCode <- 400
             else do! next.Invoke(ctx) |> (Async.AwaitIAsyncResult >> Async.Ignore)

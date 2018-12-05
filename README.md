@@ -2,6 +2,8 @@
 
 Sample for using Saturn with websockets and Fable/Elmish. Initial data is loaded from the server. Then press the big green button to start "background job" (i.e. timer) that will generate new data and push it to the client with web socket.
 
+Second big green button starts another "background job" that will push images url into the client and display the image in the UI.
+
 ## Install pre-requisites
 
 You'll need to install the following pre-requisites in order to build SAFE applications

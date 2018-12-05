@@ -13,7 +13,8 @@ open Fulma
 open Fable.Import.JS
 
 type Model =
-    {Data : DataPoint []}
+    {Data : DataPoint []
+     PhotoUrl : string option}
 
 type Msg =
     | GenerateRandomData
@@ -23,16 +24,23 @@ type Msg =
     | LoadInitialData
     | InitDataLoaded of DataPoint []
     | InitDataLoadingFailed
+    | GetRandomPhoto
+    | GetRandomPhotoInitalized
+    | GetRandomPhotoFailed
+    | RandomPhotoLoaded of DataUrl
 
 let init() : Model * Cmd<Msg> =
-    let initialModel = {Data = [||]}
+    let initialModel =
+        {Data = [||]
+         PhotoUrl = None}
+    
     let prom = fetchAs<DataPoint []> "/api/init" (Thoth.Json.Decode.Auto.generateDecoder()) []
     let cmd = Cmd.ofPromise (fun _ -> prom) () InitDataLoaded (fun _ -> InitDataLoadingFailed)
     initialModel, cmd
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
-    | GetPoint(pnt) -> 
+    | GetPoint pnt -> 
         {currentModel with Data =
                                [|yield! currentModel.Data
                                  yield pnt|]}, Cmd.none
@@ -40,11 +48,19 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         let cmd =
             Cmd.ofPromise (fun _ -> fetch "/api/generate" []) () (fun _ -> GenerateInitalized) (fun _ -> GenerateFailed)
         currentModel, cmd
-    | InitDataLoaded(d) -> {currentModel with Data = d}, Cmd.none
+    | InitDataLoaded d -> {currentModel with Data = d}, Cmd.none
     | GenerateInitalized -> currentModel, Cmd.none
     | GenerateFailed -> currentModel, Cmd.none
     | LoadInitialData -> currentModel, Cmd.none
     | InitDataLoadingFailed -> currentModel, Cmd.none
+    | GetRandomPhoto -> 
+        let cmd =
+            Cmd.ofPromise (fun _ -> fetch "/api/photo" []) () (fun _ -> GetRandomPhotoInitalized) 
+                (fun _ -> GetRandomPhotoFailed)
+        currentModel, cmd
+    | RandomPhotoLoaded d -> {currentModel with PhotoUrl = Some d.Url}, Cmd.none
+    | GetRandomPhotoInitalized -> failwith "Not Implemented"
+    | GetRandomPhotoFailed -> failwith "Not Implemented"
 
 let safeComponents =
     let components =
@@ -73,12 +89,17 @@ let chart data =
                                             yaxis [] []]
 
 let view (model : Model) (dispatch : Msg -> unit) =
+    let image =
+        if model.PhotoUrl.IsSome then img [Src model.PhotoUrl.Value]
+        else nothing
     div [] 
         [Navbar.navbar [Navbar.Color IsPrimary] [Navbar.Item.div [] [Heading.h2 [] [str "SAFE Template"]]]
-         
-         Container.container [] 
-             [Content.content [] [chart model.Data
-                                  button "Generate Random data" (fun _ -> dispatch GenerateRandomData)]]
+         Container.container [] [Content.content [] [chart model.Data
+                                                     
+                                                     button "Generate Random data" 
+                                                         (fun _ -> dispatch GenerateRandomData)
+                                                     image
+                                                     button "Generate Random pics" (fun _ -> dispatch GetRandomPhoto)]]
          
          Footer.footer [] 
              [Content.content [Content.Modifiers [Modifier.TextAlignment(Screen.All, TextAlignment.Centered)]] 
@@ -90,10 +111,19 @@ let timer initial =
         socket.addEventListener_open (fun _ -> console.log "Socket connected")
         socket.addEventListener_message (fun msg -> 
             let data = msg.data |> unbox<string>
-            let pointRes = Thoth.Json.Decode.Auto.fromString<DataPoint> data
+            let pointRes = Thoth.Json.Decode.Auto.fromString<Msg<obj>> data
             match pointRes with
             | Error msg -> console.log ("Socket msg failed:", msg)
-            | Ok msg -> dispatch (GetPoint msg))
+            | Ok msg when msg.Type = "point" -> 
+                msg.Data
+                |> unbox<DataPoint>
+                |> GetPoint
+                |> dispatch
+            | Ok msg when msg.Type = "photo" -> 
+                msg.Data
+                |> unbox<DataUrl>
+                |> RandomPhotoLoaded
+                |> dispatch)
         socket.addEventListener_close (fun _ -> console.log "Socket closed")
     Cmd.ofSub sub
 #if DEBUG

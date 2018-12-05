@@ -10,6 +10,7 @@ let port = 8085us
 let mutable x = 4.
 let random = System.Random(1234)
 let mutable timer : System.Timers.Timer option = None
+let mutable timer2 : System.Timers.Timer option = None
 
 let webApp =
     router {
@@ -27,11 +28,38 @@ let webApp =
                                {x = x
                                 y = y}
                            
-                           let z = Thoth.Json.Net.Encode.Auto.toString (2, t)
+                           let data =
+                               {Type = "point"
+                                Data = t}
+                           
+                           let z = Thoth.Json.Net.Encode.Auto.toString (2, data)
                            (WebSockets.sendMessageToSockets z).Wait()
                            x <- x + 1.)
                     t.Start()
                     timer <- Some t
+                    ()
+                return! Successful.OK "Hello world" next ctx
+            })
+        get "/api/photo" (fun next ctx -> 
+            task {
+                match timer2 with
+                | Some t -> ()
+                | None -> 
+                    let t = new System.Timers.Timer(3000.)
+                    t.Elapsed
+                    |> Event.add (fun n -> 
+                           let y = random.Next(4) + 1
+                           let t = {Url = sprintf "/images/%d.jpg" y}
+                           
+                           let data =
+                               {Type = "photo"
+                                Data = t}
+                           
+                           let z = Thoth.Json.Net.Encode.Auto.toString (2, data)
+                           (WebSockets.sendMessageToSockets z).Wait()
+                           x <- x + 1.)
+                    t.Start()
+                    timer2 <- Some t
                     ()
                 return! Successful.OK "Hello world" next ctx
             })
