@@ -1,6 +1,6 @@
 # Saturn + Websockets + Fable
 
-Sample for using Saturn with websockets and Fable/Elmish.
+Sample for using Saturn with websockets and Fable/Elmish. Initial data is loaded from the server. Then press the big green button to start "background job" (i.e. timer) that will generate new data and push it to the client with web socket.
 
 ## Install pre-requisites
 
